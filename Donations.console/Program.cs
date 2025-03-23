@@ -15,23 +15,23 @@ class Program
         // Configuração do CsvHelper
         var config = new CsvHelper.Configuration.CsvConfiguration(CultureInfo.InvariantCulture)
         {
-            Delimiter = ";",  // O delimitador está definido como ponto e vírgula
-            HasHeaderRecord = true,  // O CSV tem cabeçalhos
-            HeaderValidated = null,  // Ignora validação de cabeçalhos
-            MissingFieldFound = null  // Ignora campos ausentes
+            Delimiter = ";",  
+            HasHeaderRecord = true,  
+            HeaderValidated = null,  
+            MissingFieldFound = null
         };
 
         using CsvReader csv = new(reader, config);
 
-        // Registra a classe de mapeamento
+       
         csv.Context.RegisterClassMap<InputMapper>();
 
         Channel<Input> channel = Channel.CreateUnbounded<Input>();
 
-        // Chama a função ProcessRecordsAsync para processar os registros
+        
         Task processTask = ProcessRecordsAsync(channel);
 
-        // Lê os registros do CSV
+    
         await foreach (Input record in csv.GetRecordsAsync<Input>())
         {
             await channel.Writer.WriteAsync(record);
@@ -42,7 +42,7 @@ class Program
         await processTask;
     }
 
-    // Função para processar os registros do CSV
+
     static async Task ProcessRecordsAsync(Channel<Input> channel)
     {
         const int batchSize = 10;
@@ -65,44 +65,64 @@ class Program
         }
     }
 
-    // Função para enviar e-mails em paralelo
-    async static Task SendEmailsInParallelAsync(List<Input> batch)
+    
+ async static Task SendEmailsInParallelAsync(List<Input> batch)
+{
+    await Parallel.ForEachAsync(batch, async (item, cts) =>
     {
-        await Parallel.ForEachAsync(batch, async (item, cts) =>
+        await Task.Delay(0, cts); 
+        // Console.WriteLine(item.Email);
+
+        string remetente = "# Seu Email aqui #"; 
+        string senha = "# Sua senha aqui #"; 
+        string smtpServidor = "smtp.gmail.com";
+        int smtpPorta = 587;
+        string imagemPath = "./Donations.console/imagem_doacao.jpeg"; // Caminho da imagem
+
+        try
         {
-            await Task.Delay(0, cts); // Simula um atraso controlado
-            Console.WriteLine(item.Email);
+            // Criar corpo do e-mail
+            string corpoEmail = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; color: #333; text-align: center;'>
+                    <h2 style='color: #27ae60;'>Muito obrigado por sua participação, {item.Name}!</h2>
+                    <p style='font-size: 16px;'>Sua colaboração é essencial para o sucesso da nossa iniciativa. 
+                    Juntos, podemos alcançar grandes objetivos!</p>
+                    <p style='font-size: 14px;'>Enviamos em anexo uma lembrança especial para você.</p>
+                    <p><strong>Equipe da Eco</strong></p>
+                </body>
+                </html>";
 
-        //     string remetente = "gabrielmedsilva27@gmail.com"; // Seu e-mail
-        //     string senha = "kfrf pund ubkr wwji"; // Sua senha de app ou senha gerada (NÃO use a senha real da conta diretamente em produção)
-        //     string smtpServidor = "smtp.gmail.com";
-        //     int smtpPorta = 587;
+            MailMessage mensagem = new MailMessage
+            {
+                From = new MailAddress(remetente),
+                Subject = "Obrigado por participar!",
+                Body = corpoEmail,
+                IsBodyHtml = true
+            };
+            mensagem.To.Add(item.Email); 
 
-        //     try
-        //     {
-        //         // Cria a mensagem de e-mail
-        //         MailMessage mensagem = new MailMessage
-        //         {
-        //             From = new MailAddress(remetente),
-        //             Subject = "Obrigado por participar!",
-        //             Body = $"Seu nome é: {item.Name}",
-        //             IsBodyHtml = false
-        //         };
-        //         mensagem.To.Add(item.Email); // Adiciona o e-mail do destinatário
+            // Anexar a imagem ao e-mail, se ela existir
+            if (File.Exists(imagemPath))
+            {
+                Attachment imagemAnexo = new Attachment(imagemPath);
+                mensagem.Attachments.Add(imagemAnexo);
+            }
 
-        //         using (SmtpClient clienteSmtp = new SmtpClient(smtpServidor, smtpPorta))
-        //         {
-        //             clienteSmtp.Credentials = new NetworkCredential(remetente, senha);
-        //             clienteSmtp.EnableSsl = true;
-        //             clienteSmtp.Send(mensagem); // Envia o e-mail
-        //         }
+            using (SmtpClient clienteSmtp = new SmtpClient(smtpServidor, smtpPorta))
+            {
+                clienteSmtp.Credentials = new NetworkCredential(remetente, senha);
+                clienteSmtp.EnableSsl = true;
+                clienteSmtp.Send(mensagem); 
+            }
 
-        //         Console.WriteLine($"✅ E-mail enviado para {item.Email}!");
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         Console.WriteLine($"❌ Erro ao enviar e-mail para {item.Email}: {ex.Message}");
-        //     }
-        });
-    }
+            Console.WriteLine($"✅ E-mail enviado para {item.Email}!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao enviar e-mail para {item.Email}: {ex.Message}");
+        }
+    });
+}
+
 }
