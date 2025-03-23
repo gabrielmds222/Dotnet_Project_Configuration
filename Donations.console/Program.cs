@@ -2,6 +2,8 @@
 using CsvHelper;
 using Donations.Console.Mappers;
 using Donations.Console.Models;
+using System.Net;
+using System.Net.Mail;
 using System.Threading.Channels;
 
 class Program
@@ -26,6 +28,7 @@ class Program
 
         Channel<Input> channel = Channel.CreateUnbounded<Input>();
 
+        // Chama a função ProcessRecordsAsync para processar os registros
         Task processTask = ProcessRecordsAsync(channel);
 
         // Lê os registros do CSV
@@ -39,6 +42,7 @@ class Program
         await processTask;
     }
 
+    // Função para processar os registros do CSV
     static async Task ProcessRecordsAsync(Channel<Input> channel)
     {
         const int batchSize = 10;
@@ -61,12 +65,44 @@ class Program
         }
     }
 
+    // Função para enviar e-mails em paralelo
     async static Task SendEmailsInParallelAsync(List<Input> batch)
     {
         await Parallel.ForEachAsync(batch, async (item, cts) =>
         {
-            await Task.Delay(0, cts);
-            Console.WriteLine(item.Name); // Aqui você pode adicionar lógica para enviar email
+            await Task.Delay(0, cts); // Simula um atraso controlado
+            Console.WriteLine(item.Email);
+
+        //     string remetente = "gabrielmedsilva27@gmail.com"; // Seu e-mail
+        //     string senha = "kfrf pund ubkr wwji"; // Sua senha de app ou senha gerada (NÃO use a senha real da conta diretamente em produção)
+        //     string smtpServidor = "smtp.gmail.com";
+        //     int smtpPorta = 587;
+
+        //     try
+        //     {
+        //         // Cria a mensagem de e-mail
+        //         MailMessage mensagem = new MailMessage
+        //         {
+        //             From = new MailAddress(remetente),
+        //             Subject = "Obrigado por participar!",
+        //             Body = $"Seu nome é: {item.Name}",
+        //             IsBodyHtml = false
+        //         };
+        //         mensagem.To.Add(item.Email); // Adiciona o e-mail do destinatário
+
+        //         using (SmtpClient clienteSmtp = new SmtpClient(smtpServidor, smtpPorta))
+        //         {
+        //             clienteSmtp.Credentials = new NetworkCredential(remetente, senha);
+        //             clienteSmtp.EnableSsl = true;
+        //             clienteSmtp.Send(mensagem); // Envia o e-mail
+        //         }
+
+        //         Console.WriteLine($"✅ E-mail enviado para {item.Email}!");
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         Console.WriteLine($"❌ Erro ao enviar e-mail para {item.Email}: {ex.Message}");
+        //     }
         });
     }
 }
